@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { type OrderStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { orderStatusBadge } from "@/app/_components/ui/Badge";
 import { Pagination } from "@/app/_components/ui/Pagination";
@@ -23,7 +24,7 @@ export default async function AttendeesPage({
   });
   if (!event) redirect("/host/events");
 
-  const where = { eventId, status: { in: ["PAID", "PARTIALLY_REFUNDED"] } } as const;
+  const where = { eventId, status: { in: ["PAID", "PARTIALLY_REFUNDED"] as OrderStatus[] } };
 
   const [totalCount, allStats, orders] = await Promise.all([
     prisma.order.count({ where }),

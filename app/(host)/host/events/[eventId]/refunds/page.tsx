@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { type OrderStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { orderStatusBadge } from "@/app/_components/ui/Badge";
 import { RefundForm } from "./_RefundForm";
@@ -26,8 +27,8 @@ export default async function RefundsPage({
 
   const where = {
     eventId,
-    status: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] },
-  } as const;
+    status: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] as OrderStatus[] },
+  };
 
   const [totalCount, orders] = await Promise.all([
     prisma.order.count({ where }),

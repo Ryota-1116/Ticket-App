@@ -1,12 +1,13 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { type OrderStatus } from "@prisma/client";
 import Link from "next/link";
 import { eventStatusBadge } from "@/app/_components/ui/Badge";
 
 async function fetchStats(hostId: string, from?: Date) {
   const orderWhere = {
     event: { hostId },
-    status: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] as const },
+    status: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] as OrderStatus[] },
     ...(from ? { createdAt: { gte: from } } : {}),
   };
   const expenseWhere = {
