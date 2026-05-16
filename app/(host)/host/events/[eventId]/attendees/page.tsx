@@ -45,6 +45,7 @@ export default async function AttendeesPage({
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
+        promoCode: { select: { code: true } },
         orderItems: {
           include: {
             ticketType: { select: { name: true } },
@@ -103,6 +104,11 @@ export default async function AttendeesPage({
                             {item.ticketType.name} × {item.quantity}
                           </span>
                         ))}
+                        {order.promoCode && (
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-mono">
+                            🏷 {order.promoCode.code}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">

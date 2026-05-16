@@ -14,6 +14,7 @@ type PromoCode = {
   discountValue: string;
   maxUses: number | null;
   usedCount: number;
+  ticketCount: number;
   validFrom: string | null;
   validUntil: string | null;
 };
@@ -52,8 +53,9 @@ export function PromoCodeCard({
             {promoCode.discountType === "PERCENTAGE"
               ? `${promoCode.discountValue}% OFF`
               : `$${promoCode.discountValue} OFF`}
-            {promoCode.maxUses !== null && ` · ${promoCode.usedCount}/${promoCode.maxUses} 使用`}
-            {promoCode.maxUses === null && ` · ${promoCode.usedCount} 回使用`}
+            {promoCode.maxUses !== null && ` · ${promoCode.usedCount}/${promoCode.maxUses} 注文`}
+            {promoCode.maxUses === null && ` · ${promoCode.usedCount} 注文`}
+            {` · ${promoCode.ticketCount} 枚`}
           </p>
           {(promoCode.validFrom || promoCode.validUntil) && (
             <p className="text-xs text-gray-400 mt-0.5">

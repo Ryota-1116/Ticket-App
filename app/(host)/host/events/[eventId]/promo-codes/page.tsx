@@ -1,5 +1,6 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { type OrderStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { deletePromoCode } from "@/app/actions/promo-codes";
 import { PromoCodeForm } from "./_PromoCodeForm";
@@ -32,7 +33,7 @@ export default async function PromoCodesPage({
 
   const where = { eventId };
 
-  const [totalCount, promoCodes] = await Promise.all([
+  const [totalCount, promoCodesRaw] = await Promise.all([
     prisma.promoCode.count({ where }),
     prisma.promoCode.findMany({
       where,
@@ -41,6 +42,21 @@ export default async function PromoCodesPage({
       take: PAGE_SIZE,
     }),
   ]);
+
+  const promoCodes = await Promise.all(
+    promoCodesRaw.map(async (pc) => {
+      const agg = await prisma.orderItem.aggregate({
+        where: {
+          order: {
+            promoCodeId: pc.id,
+            status: { in: ["PAID", "PARTIALLY_REFUNDED"] as OrderStatus[] },
+          },
+        },
+        _sum: { quantity: true },
+      });
+      return { ...pc, ticketCount: agg._sum.quantity ?? 0 };
+    })
+  );
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -67,6 +83,7 @@ export default async function PromoCodesPage({
                     discountValue: Number(pc.discountValue).toString(),
                     maxUses: pc.maxUses,
                     usedCount: pc.usedCount,
+                    ticketCount: pc.ticketCount,
                     validFrom: pc.validFrom ? toDatetimeLocal(pc.validFrom) : null,
                     validUntil: pc.validUntil ? toDatetimeLocal(pc.validUntil) : null,
                   }}
