@@ -113,6 +113,7 @@ export function EventSubNav({
     { href: `${base}/tickets`, label: "チケット" },
     { href: `${base}/attendees`, label: "参加者" },
     { href: `${base}/checkin`, label: "チェックイン" },
+    { href: `${base}/walk-in`, label: "当日受付" },
     { href: `${base}/promo-codes`, label: "プロモ" },
     { href: `${base}/expenses`, label: "経費" },
     { href: `${base}/refunds`, label: "返金" },
