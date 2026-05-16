@@ -87,11 +87,13 @@ export async function createWalkInOrder(
         },
       });
 
+      const now = new Date();
       for (let i = 0; i < item.quantity; i++) {
         await tx.ticket.create({
           data: {
             orderItemId: orderItem.id,
             qrCode: crypto.randomUUID(),
+            checkedInAt: now,
           },
         });
       }
