@@ -119,5 +119,5 @@ export async function deleteEvent(eventId: string) {
   const user = await requireAuth();
   await requireEventAccess(eventId, user.id);
   await prisma.event.delete({ where: { id: eventId } });
-  redirect("/host/events");
+  revalidatePath("/host/events");
 }
