@@ -34,19 +34,32 @@ export async function createEvent(
 
   const { title, description, location, startAt, endAt, imageUrl } = parsed.data;
 
-  const event = await prisma.event.create({
-    data: {
-      hostId: user.id,
-      title,
-      description,
-      location,
-      startAt: new Date(startAt),
-      endAt: new Date(endAt),
-      imageUrl: imageUrl ?? null,
-      privacyPolicy: generatePrivacyPolicy("", title),
-      status: "DRAFT",
-    },
-  });
+  const [event, otherProfiles] = await Promise.all([
+    prisma.event.create({
+      data: {
+        hostId: user.id,
+        title,
+        description,
+        location,
+        startAt: new Date(startAt),
+        endAt: new Date(endAt),
+        imageUrl: imageUrl ?? null,
+        privacyPolicy: generatePrivacyPolicy("", title),
+        status: "DRAFT",
+      },
+    }),
+    prisma.profile.findMany({
+      where: { id: { not: user.id } },
+      select: { id: true },
+    }),
+  ]);
+
+  if (otherProfiles.length > 0) {
+    await prisma.eventCollaborator.createMany({
+      data: otherProfiles.map((p) => ({ eventId: event.id, userId: p.id })),
+      skipDuplicates: true,
+    });
+  }
 
   redirect(`/host/events/${event.id}`);
 }
