@@ -32,7 +32,7 @@ export default async function EventOverviewPage({
   });
   if (!event) redirect("/host/events");
 
-  const isOwner = event.hostId === user.id;
+  const isOwner = event.hostId === user.id; // 共有メンバー管理のみオーナー限定
 
   // 集計
   const totalSold = event.orders
@@ -125,7 +125,7 @@ export default async function EventOverviewPage({
             ✏️ 編集
           </Link>
 
-          {isOwner && event.status === "DRAFT" ? (
+          {event.status === "DRAFT" ? (
             <form
               action={async () => {
                 "use server";
@@ -139,7 +139,7 @@ export default async function EventOverviewPage({
                 🌐 公開する
               </button>
             </form>
-          ) : isOwner && event.status === "PUBLISHED" ? (
+          ) : event.status === "PUBLISHED" ? (
             <form
               action={async () => {
                 "use server";
@@ -155,7 +155,7 @@ export default async function EventOverviewPage({
             </form>
           ) : null}
 
-          {isOwner && <DeleteEventButton eventId={eventId} />}
+          <DeleteEventButton eventId={eventId} />
         </div>
       </div>
 

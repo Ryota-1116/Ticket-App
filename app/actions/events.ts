@@ -84,7 +84,7 @@ export async function updateEvent(
 
 export async function publishEvent(eventId: string) {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
   await prisma.event.update({
     where: { id: eventId },
     data: { status: "PUBLISHED" },
@@ -94,7 +94,7 @@ export async function publishEvent(eventId: string) {
 
 export async function unpublishEvent(eventId: string) {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
   await prisma.event.update({
     where: { id: eventId },
     data: { status: "DRAFT" },
@@ -104,7 +104,7 @@ export async function unpublishEvent(eventId: string) {
 
 export async function deleteEvent(eventId: string) {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
   await prisma.event.delete({ where: { id: eventId } });
   redirect("/host/events");
 }
