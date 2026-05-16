@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  REFUNDED
+  PARTIALLY_REFUNDED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+// Supabase auth.users と 1:1 対応。id は auth.users(id) と同じ UUID を使う。
+model Profile {
+  id        String   @id
+  email     String   @unique
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  events Event[]
+
+  @@map("profiles")
+}
+
+model Event {
+  id            String      @id @default(cuid())
+  hostId        String      @map("host_id")
+  title         String
+  description   String      @db.Text
+  location      String
+  startAt       DateTime    @map("start_at")
+  endAt         DateTime    @map("end_at")
+  imageUrl      String?     @map("image_url")
+  status        EventStatus @default(DRAFT)
+  // ゲスト向けに表示するプライバシーポリシー本文
+  privacyPolicy String?     @db.Text @map("privacy_policy")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  host        Profile      @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  ticketTypes TicketType[]
+  promoCodes  PromoCode[]
+  orders      Order[]
+  expenses    Expense[]
+
+  @@map("events")
+}
+
+model TicketType {
+  id           String          @id @default(cuid())
+  eventId      String          @map("event_id")
+  name         String
+  description  String?         @db.Text
+  // 金額はカナダドル（例: 10.50）
+  price        Decimal         @db.Decimal(10, 2)
+  // 販売枚数上限
+  quantity     Int
+  salesStartAt DateTime?       @map("sales_start_at")
+  salesEndAt   DateTime?       @map("sales_end_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@map("ticket_types")
+}
+
+model PromoCode {
+  id            String       @id @default(cuid())
+  eventId       String       @map("event_id")
+  code          String
+  discountType  DiscountType @map("discount_type")
+  // PERCENTAGE なら 0〜100（例: 10.00 = 10%）、FIXED なら割引額（ドル）
+  discountValue Decimal      @db.Decimal(10, 2) @map("discount_value")
+  maxUses       Int?         @map("max_uses")
+  usedCount     Int          @default(0) @map("used_count")
+  validFrom     DateTime?    @map("valid_from")
+  validUntil    DateTime?    @map("valid_until")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  // 同一イベント内でコードは一意
+  @@unique([eventId, code])
+  @@map("promo_codes")
+}
+
+model Order {
+  id                    String      @id @default(cuid())
+  eventId               String      @map("event_id")
+  buyerName             String      @map("buyer_name")
+  buyerEmail            String      @map("buyer_email")
+  promoCodeId           String?     @map("promo_code_id")
+  // 割引前の合計（ドル）
+  subtotal              Decimal     @db.Decimal(10, 2)
+  // 適用された割引額（ドル）
+  discountAmount        Decimal     @default(0) @db.Decimal(10, 2) @map("discount_amount")
+  // 実際の請求額（ドル）
+  totalAmount           Decimal     @db.Decimal(10, 2) @map("total_amount")
+  // Stripe の手数料（webhook で確定後に記録、ドル）
+  stripeFee             Decimal     @default(0) @db.Decimal(10, 2) @map("stripe_fee")
+  stripePaymentIntentId String?     @unique @map("stripe_payment_intent_id")
+  stripeChargeId        String?     @map("stripe_charge_id")
+  status                OrderStatus @default(PENDING)
+  // 累積返金額（ドル、部分返金に対応）
+  refundedAmount        Decimal     @default(0) @db.Decimal(10, 2) @map("refunded_amount")
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+
+  event      Event       @relation(fields: [eventId], references: [id])
+  promoCode  PromoCode?  @relation(fields: [promoCodeId], references: [id])
+  orderItems OrderItem[]
+  refunds    Refund[]
+
+  @@index([eventId])
+  @@index([buyerEmail])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String   @map("order_id")
+  ticketTypeId String   @map("ticket_type_id")
+  quantity     Int
+  // 購入時点の単価スナップショット（ドル。後から ticket_type.price が変わっても正しい金額を保持）
+  unitPrice    Decimal  @db.Decimal(10, 2) @map("unit_price")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+  tickets    Ticket[]
+
+  @@map("order_items")
+}
+
+// 1 枚のチケットに対応。quantity=3 なら OrderItem に対して Ticket が 3 行作られる。
+model Ticket {
+  id          String    @id @default(cuid())
+  orderItemId String    @map("order_item_id")
+  // QR コードに埋め込むユニークトークン（CUID/UUID）
+  qrCode      String    @unique @map("qr_code")
+  checkedInAt DateTime? @map("checked_in_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@map("tickets")
+}
+
+model InviteCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  maxUses   Int?     @map("max_uses")
+  usedCount Int      @default(0) @map("used_count")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("invite_codes")
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  eventId     String   @map("event_id")
+  description String
+  // 金額（ドル）
+  amount      Decimal  @db.Decimal(10, 2)
+  occurredAt  DateTime @map("occurred_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model Refund {
+  id             String   @id @default(cuid())
+  orderId        String   @map("order_id")
+  stripeRefundId String   @unique @map("stripe_refund_id")
+  // 返金額（ドル）
+  amount         Decimal  @db.Decimal(10, 2)
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("refunds")
+}
