@@ -110,7 +110,7 @@ export function PromoCodeCard({
               label={discountType === "PERCENTAGE" ? "割引率 (%)" : "割引額 ($)"}
               name="discountValue"
               type="number"
-              min="0.01"
+              min={discountType === "PERCENTAGE" ? "1" : "0.01"}
               step={discountType === "PERCENTAGE" ? "1" : "0.01"}
               max={discountType === "PERCENTAGE" ? "100" : undefined}
               required
