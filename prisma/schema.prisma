@@ -203,7 +203,7 @@ model Expense {
 model Refund {
   id             String   @id @default(cuid())
   orderId        String   @map("order_id")
-  stripeRefundId String   @unique @map("stripe_refund_id")
+  stripeRefundId String?  @unique @map("stripe_refund_id")
   // 返金額（ドル）
   amount         Decimal  @db.Decimal(10, 2)
   reason         String?

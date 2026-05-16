@@ -52,22 +52,24 @@ export async function createRefund(
   if (refundAmount.gt(maxRefundable))
     return { error: `返金可能額は $${maxRefundable.toFixed(2)} までです` };
 
-  if (!order.stripePaymentIntentId)
-    return { error: "支払い情報が見つかりません" };
-
-  const stripeRefund = await stripe.refunds.create({
-    payment_intent: order.stripePaymentIntentId,
-    amount: Math.round(refundAmount.mul(100).toNumber()),
-  });
-
   const newRefundedAmount = order.refundedAmount.add(refundAmount);
   const isFullRefund = newRefundedAmount.gte(order.totalAmount);
+
+  let stripeRefundId: string | null = null;
+
+  if (order.stripePaymentIntentId) {
+    const stripeRefund = await stripe.refunds.create({
+      payment_intent: order.stripePaymentIntentId,
+      amount: Math.round(refundAmount.mul(100).toNumber()),
+    });
+    stripeRefundId = stripeRefund.id;
+  }
 
   await prisma.$transaction([
     prisma.refund.create({
       data: {
         orderId,
-        stripeRefundId: stripeRefund.id,
+        stripeRefundId,
         amount: refundAmount,
         reason: parsed.data.reason || null,
       },

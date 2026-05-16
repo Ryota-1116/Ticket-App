@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "refunds" ALTER COLUMN "stripe_refund_id" DROP NOT NULL;
