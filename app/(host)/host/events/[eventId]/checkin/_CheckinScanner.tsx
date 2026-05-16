@@ -1,33 +1,107 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { QrReader } from "react-qr-reader";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { checkinByQrCode } from "@/app/actions/checkin";
 
-type Result =
+type ScanResult =
   | { success: true; attendeeName: string; ticketName: string }
   | { success: false; error: string }
   | null;
 
 export function CheckinScanner({ eventId }: { eventId: string }) {
-  const [result, setResult] = useState<Result>(null);
+  const [result, setResult] = useState<ScanResult>(null);
   const [scanning, setScanning] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number>(0);
+  const scannedRef = useRef(false);
+
+  const stopCamera = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }, []);
 
   const handleScan = useCallback(
-    async (data: string | null) => {
-      if (!data || processing) return;
-      setProcessing(true);
+    async (data: string) => {
+      if (scannedRef.current) return;
+      scannedRef.current = true;
       setScanning(false);
+      setProcessing(true);
+      stopCamera();
       const res = await checkinByQrCode(eventId, data);
       setResult(res);
       setProcessing(false);
     },
-    [eventId, processing]
+    [eventId, stopCamera]
   );
+
+  useEffect(() => {
+    if (!scanning) return;
+
+    scannedRef.current = false;
+    let active = true;
+
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+        if (!active) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        video.setAttribute("playsinline", "true");
+        await video.play();
+
+        const jsQR = (await import("jsqr")).default;
+
+        const tick = () => {
+          if (!active) return;
+          const v = videoRef.current;
+          const c = canvasRef.current;
+          if (!v || !c) return;
+
+          if (v.readyState === v.HAVE_ENOUGH_DATA) {
+            c.width = v.videoWidth;
+            c.height = v.videoHeight;
+            const ctx = c.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(v, 0, 0);
+              const imageData = ctx.getImageData(0, 0, c.width, c.height);
+              const code = jsQR(imageData.data, imageData.width, imageData.height);
+              if (code) {
+                handleScan(code.data);
+                return;
+              }
+            }
+          }
+          rafRef.current = requestAnimationFrame(tick);
+        };
+
+        rafRef.current = requestAnimationFrame(tick);
+      } catch {
+        if (active) setCameraError("カメラを起動できませんでした");
+      }
+    })();
+
+    return () => {
+      active = false;
+      stopCamera();
+    };
+  }, [scanning, handleScan, stopCamera]);
 
   const reset = () => {
     setResult(null);
+    setCameraError(null);
     setScanning(true);
   };
 
@@ -35,15 +109,14 @@ export function CheckinScanner({ eventId }: { eventId: string }) {
     <div className="flex flex-col items-center gap-4">
       {scanning ? (
         <div className="w-full max-w-sm">
-          <div className="rounded-2xl overflow-hidden border-2 border-blue-200">
-            <QrReader
-              onResult={(result, error) => {
-                if (result) handleScan(result.getText());
-              }}
-              constraints={{ facingMode: "environment" }}
-              containerStyle={{ width: "100%" }}
-            />
-          </div>
+          {cameraError ? (
+            <div className="text-center py-8 text-red-500 text-sm">{cameraError}</div>
+          ) : (
+            <div className="rounded-2xl overflow-hidden border-2 border-blue-200 bg-black aspect-square">
+              <video ref={videoRef} muted playsInline className="w-full h-full object-cover" />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+          )}
           <p className="text-center text-sm text-gray-500 mt-3">
             カメラにQRコードをかざしてください
           </p>
