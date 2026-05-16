@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { requireEventOwner, requireEventAccess } from "@/lib/event-access";
 import { generatePrivacyPolicy } from "@/lib/privacy-policy";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,14 +21,6 @@ const EventSchema = z.object({
     z.string().url("有効なURLを入力してください").optional()
   ),
 });
-
-async function requireEventOwner(eventId: string, userId: string) {
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: userId },
-  });
-  if (!event) redirect("/host/events");
-  return event;
-}
 
 export async function createEvent(
   _prev: EventState,
@@ -64,7 +57,7 @@ export async function updateEvent(
   formData: FormData
 ): Promise<EventState> {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
 
   const parsed = EventSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)

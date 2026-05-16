@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth";
+import { eventAccessWhere } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
 import { type OrderStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -13,7 +14,7 @@ export default async function WalkInPage({
   const { eventId } = await params;
 
   const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
+    where: eventAccessWhere(eventId, user.id),
     include: { ticketTypes: { orderBy: { price: "asc" } } },
   });
   if (!event) redirect("/host/events");

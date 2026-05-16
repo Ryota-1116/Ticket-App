@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { CheckinScanner } from "./_CheckinScanner";
 
 export default async function CheckinPage({
@@ -11,10 +11,7 @@ export default async function CheckinPage({
   const user = await requireAuth();
   const { eventId } = await params;
 
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
-  });
-  if (!event) redirect("/host/events");
+  await requireEventAccess(eventId, user.id);
 
   const [totalTickets, checkedIn] = await Promise.all([
     prisma.ticket.count({

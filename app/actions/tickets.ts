@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 export type TicketTypeState = { error?: string; success?: boolean };
@@ -22,21 +22,13 @@ const TicketTypeSchema = z.object({
   salesEndAt: z.string().optional(),
 });
 
-async function requireEventOwner(eventId: string, userId: string) {
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: userId },
-  });
-  if (!event) redirect("/host/events");
-  return event;
-}
-
 export async function createTicketType(
   eventId: string,
   _prev: TicketTypeState,
   formData: FormData
 ): Promise<TicketTypeState> {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
 
   const parsed = TicketTypeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -68,7 +60,7 @@ export async function updateTicketType(
   formData: FormData
 ): Promise<TicketTypeState> {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
 
   const parsed = TicketTypeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -95,7 +87,7 @@ export async function updateTicketType(
 
 export async function deleteTicketType(eventId: string, ticketTypeId: string) {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
   await prisma.ticketType.delete({ where: { id: ticketTypeId } });
   revalidatePath(`/host/events/${eventId}/tickets`);
 }

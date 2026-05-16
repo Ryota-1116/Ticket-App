@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { EventSubNav } from "@/app/_components/HostNav";
+import { eventAccessFilter } from "@/lib/event-access";
 
 export default async function EventLayout({
   children,
@@ -14,7 +15,7 @@ export default async function EventLayout({
   const { eventId } = await params;
 
   const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
+    where: { id: eventId, ...eventAccessFilter(user.id) },
     select: { id: true, title: true },
   });
   if (!event) redirect("/host/events");

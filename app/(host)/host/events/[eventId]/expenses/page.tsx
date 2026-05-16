@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { deleteExpense } from "@/app/actions/expenses";
 import { ExpenseForm } from "./_ExpenseForm";
 import { ExpenseCard } from "./_ExpenseCard";
@@ -20,10 +20,7 @@ export default async function ExpensesPage({
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
-  });
-  if (!event) redirect("/host/events");
+  await requireEventAccess(eventId, user.id);
 
   const where = { eventId };
 

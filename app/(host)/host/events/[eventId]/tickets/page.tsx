@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth";
+import { eventAccessWhere } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { deleteTicketType } from "@/app/actions/tickets";
@@ -21,7 +22,7 @@ export default async function TicketsPage({
   const { eventId } = await params;
 
   const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
+    where: eventAccessWhere(eventId, user.id),
     include: {
       ticketTypes: {
         orderBy: { createdAt: "asc" },
@@ -35,6 +36,7 @@ export default async function TicketsPage({
     },
   });
   if (!event) redirect("/host/events");
+
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-6">

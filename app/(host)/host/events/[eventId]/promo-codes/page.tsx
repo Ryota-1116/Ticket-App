@@ -1,7 +1,7 @@
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
 import { type OrderStatus } from "@prisma/client";
-import { redirect } from "next/navigation";
 import { deletePromoCode } from "@/app/actions/promo-codes";
 import { PromoCodeForm } from "./_PromoCodeForm";
 import { PromoCodeCard } from "./_PromoCodeCard";
@@ -26,10 +26,7 @@ export default async function PromoCodesPage({
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
-  });
-  if (!event) redirect("/host/events");
+  await requireEventAccess(eventId, user.id);
 
   const where = { eventId };
 

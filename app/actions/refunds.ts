@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { stripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -17,14 +18,6 @@ const RefundSchema = z.object({
   reason: z.string().optional(),
 });
 
-async function requireEventOwner(eventId: string, userId: string) {
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: userId },
-  });
-  if (!event) redirect("/host/events");
-  return event;
-}
-
 export async function createRefund(
   orderId: string,
   _prev: RefundState,
@@ -37,7 +30,7 @@ export async function createRefund(
     include: { event: true },
   });
   if (!order) return { error: "注文が見つかりません" };
-  await requireEventOwner(order.eventId, user.id);
+  await requireEventAccess(order.eventId, user.id);
 
   if (order.status !== "PAID" && order.status !== "PARTIALLY_REFUNDED")
     return { error: "返金できない注文です" };

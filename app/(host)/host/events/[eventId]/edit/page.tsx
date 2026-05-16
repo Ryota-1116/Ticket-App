@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth";
+import { eventAccessWhere } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { EditEventForm } from "./_EditEventForm";
@@ -18,7 +19,7 @@ export default async function EditEventPage({
   const { eventId } = await params;
 
   const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
+    where: eventAccessWhere(eventId, user.id),
   });
   if (!event) redirect("/host/events");
 

@@ -1,17 +1,18 @@
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { type OrderStatus } from "@prisma/client";
+import { eventAccessFilter } from "@/lib/event-access";
 import Link from "next/link";
 import { eventStatusBadge } from "@/app/_components/ui/Badge";
 
-async function fetchStats(hostId: string, from?: Date) {
+async function fetchStats(eventIds: string[], from?: Date) {
   const orderWhere = {
-    event: { hostId },
+    eventId: { in: eventIds },
     status: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] as OrderStatus[] },
     ...(from ? { createdAt: { gte: from } } : {}),
   };
   const expenseWhere = {
-    event: { hostId },
+    eventId: { in: eventIds },
     ...(from ? { occurredAt: { gte: from } } : {}),
   };
 
@@ -40,21 +41,24 @@ export default async function EventsPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-  const [events, monthStats, yearStats, allStats] = await Promise.all([
-    prisma.event.findMany({
-      where: { hostId: user.id },
-      orderBy: { startAt: "desc" },
-      include: {
-        _count: { select: { ticketTypes: true } },
-        orders: {
-          where: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] } },
-          select: { totalAmount: true },
-        },
+  const events = await prisma.event.findMany({
+    where: eventAccessFilter(user.id),
+    orderBy: { startAt: "desc" },
+    include: {
+      _count: { select: { ticketTypes: true } },
+      orders: {
+        where: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] } },
+        select: { totalAmount: true },
       },
-    }),
-    fetchStats(user.id, startOfMonth),
-    fetchStats(user.id, startOfYear),
-    fetchStats(user.id),
+    },
+  });
+
+  const eventIds = events.map((e) => e.id);
+
+  const [monthStats, yearStats, allStats] = await Promise.all([
+    fetchStats(eventIds, startOfMonth),
+    fetchStats(eventIds, startOfYear),
+    fetchStats(eventIds),
   ]);
 
   const statColumns = [

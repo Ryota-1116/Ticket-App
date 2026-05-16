@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 export type PromoCodeState = { error?: string; success?: boolean };
@@ -20,21 +20,13 @@ const PromoCodeSchema = z.object({
   validUntil: z.string().optional(),
 });
 
-async function requireEventOwner(eventId: string, userId: string) {
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: userId },
-  });
-  if (!event) redirect("/host/events");
-  return event;
-}
-
 export async function createPromoCode(
   eventId: string,
   _prev: PromoCodeState,
   formData: FormData
 ): Promise<PromoCodeState> {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
 
   const parsed = PromoCodeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -72,7 +64,7 @@ export async function updatePromoCode(
   formData: FormData
 ): Promise<PromoCodeState> {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
 
   const parsed = PromoCodeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -104,7 +96,7 @@ export async function updatePromoCode(
 
 export async function deletePromoCode(eventId: string, promoCodeId: string) {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
   await prisma.promoCode.delete({ where: { id: promoCodeId } });
   revalidatePath(`/host/events/${eventId}/promo-codes`);
 }

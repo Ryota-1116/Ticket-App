@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { type OrderStatus } from "@prisma/client";
@@ -23,7 +24,10 @@ export async function createWalkInOrder(
   const user = await requireAuth();
 
   const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
+    where: {
+      id: eventId,
+      OR: [{ hostId: user.id }, { collaborators: { some: { userId: user.id } } }],
+    },
     include: { ticketTypes: true },
   });
   if (!event) return { error: "イベントが見つかりません" };

@@ -1,8 +1,11 @@
 import { requireAuth } from "@/lib/auth";
+import { eventAccessWhere } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { eventStatusBadge } from "@/app/_components/ui/Badge";
 import { publishEvent, unpublishEvent } from "@/app/actions/events";
+import { removeCollaborator } from "@/app/actions/collaborators";
+import { CollaboratorForm } from "./_CollaboratorForm";
 import Link from "next/link";
 import { DeleteEventButton } from "./_DeleteEventButton";
 import { CopyButton } from "@/app/_components/ui/CopyButton";
@@ -16,7 +19,7 @@ export default async function EventOverviewPage({
   const { eventId } = await params;
 
   const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
+    where: eventAccessWhere(eventId, user.id),
     include: {
       ticketTypes: true,
       orders: {
@@ -24,9 +27,12 @@ export default async function EventOverviewPage({
         include: { orderItems: true, refunds: true },
       },
       expenses: true,
+      collaborators: { include: { user: { select: { id: true, email: true, name: true } } } },
     },
   });
   if (!event) redirect("/host/events");
+
+  const isOwner = event.hostId === user.id;
 
   // 集計
   const totalSold = event.orders
@@ -119,7 +125,7 @@ export default async function EventOverviewPage({
             ✏️ 編集
           </Link>
 
-          {event.status === "DRAFT" ? (
+          {isOwner && event.status === "DRAFT" ? (
             <form
               action={async () => {
                 "use server";
@@ -133,7 +139,7 @@ export default async function EventOverviewPage({
                 🌐 公開する
               </button>
             </form>
-          ) : event.status === "PUBLISHED" ? (
+          ) : isOwner && event.status === "PUBLISHED" ? (
             <form
               action={async () => {
                 "use server";
@@ -149,9 +155,44 @@ export default async function EventOverviewPage({
             </form>
           ) : null}
 
-          <DeleteEventButton eventId={eventId} />
+          {isOwner && <DeleteEventButton eventId={eventId} />}
         </div>
       </div>
+
+      {/* 共有（オーナーのみ） */}
+      {isOwner && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
+          <p className="text-sm font-medium text-gray-700">共有メンバー</p>
+
+          {event.collaborators.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {event.collaborators.map((c) => (
+                <div key={c.userId} className="flex items-center justify-between gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                  <div className="min-w-0">
+                    {c.user.name && <p className="text-sm font-medium text-gray-800 truncate">{c.user.name}</p>}
+                    <p className="text-xs text-gray-500 truncate">{c.user.email}</p>
+                  </div>
+                  <form
+                    action={async () => {
+                      "use server";
+                      await removeCollaborator(eventId, c.userId);
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 shrink-0"
+                    >
+                      削除
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <CollaboratorForm eventId={eventId} />
+        </div>
+      )}
     </div>
   );
 }

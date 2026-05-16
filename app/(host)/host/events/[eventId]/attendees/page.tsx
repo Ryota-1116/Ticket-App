@@ -1,7 +1,7 @@
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { prisma } from "@/lib/prisma";
 import { type OrderStatus } from "@prisma/client";
-import { redirect } from "next/navigation";
 import { orderStatusBadge } from "@/app/_components/ui/Badge";
 import { Pagination } from "@/app/_components/ui/Pagination";
 
@@ -19,10 +19,7 @@ export default async function AttendeesPage({
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: user.id },
-  });
-  if (!event) redirect("/host/events");
+  await requireEventAccess(eventId, user.id);
 
   const where = { eventId, status: { in: ["PAID", "PARTIALLY_REFUNDED"] as OrderStatus[] } };
 

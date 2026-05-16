@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
+import { requireEventAccess } from "@/lib/event-access";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 export type ExpenseState = { error?: string; success?: boolean };
@@ -17,21 +17,13 @@ const ExpenseSchema = z.object({
   occurredAt: z.string().min(1, "日付を入力してください"),
 });
 
-async function requireEventOwner(eventId: string, userId: string) {
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, hostId: userId },
-  });
-  if (!event) redirect("/host/events");
-  return event;
-}
-
 export async function createExpense(
   eventId: string,
   _prev: ExpenseState,
   formData: FormData
 ): Promise<ExpenseState> {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
 
   const parsed = ExpenseSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -59,7 +51,7 @@ export async function updateExpense(
   formData: FormData
 ): Promise<ExpenseState> {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
 
   const parsed = ExpenseSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
@@ -82,7 +74,7 @@ export async function updateExpense(
 
 export async function deleteExpense(eventId: string, expenseId: string) {
   const user = await requireAuth();
-  await requireEventOwner(eventId, user.id);
+  await requireEventAccess(eventId, user.id);
   await prisma.expense.delete({ where: { id: expenseId } });
   revalidatePath(`/host/events/${eventId}/expenses`);
 }
