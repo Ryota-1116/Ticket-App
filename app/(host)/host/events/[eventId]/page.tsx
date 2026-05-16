@@ -66,19 +66,21 @@ export default async function EventOverviewPage({
       </div>
 
       {/* ダッシュボード */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: "販売枚数", value: `${totalSold} 枚` },
           { label: "売上", value: `$${grossRevenue.toFixed(2)}` },
-          { label: "手数料・返金", value: `-$${(totalFees + totalRefunds).toFixed(2)}` },
           { label: "純利益", value: `$${netProfit.toFixed(2)}`, highlight: true },
+          { label: "Stripe手数料", value: `-$${totalFees.toFixed(2)}`, sub: true },
+          { label: "返金額", value: `-$${totalRefunds.toFixed(2)}`, sub: true },
+          { label: "経費", value: `-$${totalExpenses.toFixed(2)}`, sub: true },
         ].map((stat) => (
           <div
             key={stat.label}
-            className={`bg-white rounded-xl border p-4 ${stat.highlight ? "border-blue-200 bg-blue-50" : "border-gray-200"}`}
+            className={`bg-white rounded-xl border p-3 sm:p-4 ${stat.highlight ? "border-blue-200 bg-blue-50" : "border-gray-200"}`}
           >
             <p className="text-xs text-gray-500">{stat.label}</p>
-            <p className={`text-lg font-bold mt-0.5 ${stat.highlight ? "text-blue-700" : "text-gray-900"}`}>
+            <p className={`text-base sm:text-lg font-bold mt-0.5 ${stat.highlight ? "text-blue-700" : stat.sub ? "text-gray-500" : "text-gray-900"}`}>
               {stat.value}
             </p>
           </div>
