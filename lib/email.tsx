@@ -6,6 +6,52 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY!);
 }
 
+export async function sendPurchaseNotification(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      event: {
+        include: {
+          host: { select: { email: true } },
+          collaborators: { include: { user: { select: { email: true } } } },
+        },
+      },
+      orderItems: { include: { ticketType: { select: { name: true } } } },
+    },
+  });
+  if (!order) return;
+
+  const adminEmails = [
+    order.event.host.email,
+    ...order.event.collaborators.map((c) => c.user.email),
+  ];
+
+  const itemLines = order.orderItems
+    .map((i) => `${i.ticketType.name} × ${i.quantity}`)
+    .join(", ");
+
+  await getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to: adminEmails,
+    subject: `[購入通知] ${order.event.title} — ${order.buyerName}`,
+    html: `
+      <div style="max-width:480px;margin:0 auto;font-family:sans-serif;color:#111827;">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:16px;">チケット購入がありました</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
+          <tr><td style="padding:6px 0;color:#6b7280;">イベント</td><td style="padding:6px 0;font-weight:600;">${order.event.title}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">購入者</td><td style="padding:6px 0;">${order.buyerName}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">メール</td><td style="padding:6px 0;">${order.buyerEmail}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">チケット</td><td style="padding:6px 0;">${itemLines}</td></tr>
+          <tr style="border-top:1px solid #e5e7eb;">
+            <td style="padding:10px 0 4px;font-weight:700;">合計</td>
+            <td style="padding:10px 0 4px;font-weight:700;">$${Number(order.totalAmount).toFixed(2)} CAD</td>
+          </tr>
+        </table>
+      </div>
+    `,
+  });
+}
+
 export async function sendTicketEmail(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },

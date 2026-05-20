@@ -1,6 +1,6 @@
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { sendTicketEmail } from "@/lib/email";
+import { sendTicketEmail, sendPurchaseNotification } from "@/lib/email";
 import { headers } from "next/headers";
 import { randomUUID } from "crypto";
 import type Stripe from "stripe";
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
 
     // メール送信（非同期、失敗してもOK）
     sendTicketEmail(orderId).catch(console.error);
+    sendPurchaseNotification(orderId).catch(console.error);
   }
 
   if (event.type === "checkout.session.expired") {
