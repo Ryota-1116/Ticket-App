@@ -70,6 +70,8 @@ export async function sendPurchaseNotification(orderId: string) {
     ...order.event.collaborators.map((c) => c.user.email),
   ];
 
+  console.log("[email] sendPurchaseNotification to:", adminEmails);
+
   const itemLines = order.orderItems
     .map((i) => `${i.ticketType.name} × ${i.quantity}`)
     .join(", ");

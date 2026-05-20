@@ -75,10 +75,12 @@ export async function POST(request: Request) {
       }
     });
 
-    await Promise.allSettled([
+    const [ticketResult, notifResult] = await Promise.allSettled([
       sendTicketEmail(orderId),
       sendPurchaseNotification(orderId),
     ]);
+    if (ticketResult.status === "rejected") console.error("[email] sendTicketEmail failed:", ticketResult.reason);
+    if (notifResult.status === "rejected") console.error("[email] sendPurchaseNotification failed:", notifResult.reason);
   }
 
   if (event.type === "checkout.session.expired") {
