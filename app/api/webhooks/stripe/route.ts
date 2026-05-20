@@ -75,9 +75,10 @@ export async function POST(request: Request) {
       }
     });
 
-    // メール送信（非同期、失敗してもOK）
-    sendTicketEmail(orderId).catch(console.error);
-    sendPurchaseNotification(orderId).catch(console.error);
+    await Promise.allSettled([
+      sendTicketEmail(orderId),
+      sendPurchaseNotification(orderId),
+    ]);
   }
 
   if (event.type === "checkout.session.expired") {
