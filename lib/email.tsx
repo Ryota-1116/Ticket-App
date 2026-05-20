@@ -6,6 +6,50 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY!);
 }
 
+export async function sendRefundEmail(orderId: string, refundAmount: number) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { event: { select: { title: true, startAt: true, location: true } } },
+  });
+  if (!order) return;
+
+  const isFullRefund = refundAmount >= Number(order.totalAmount);
+
+  await getResend().emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to: order.buyerEmail,
+    subject: `Refund Confirmation — ${order.event.title}`,
+    html: `
+      <div style="max-width:480px;margin:0 auto;font-family:sans-serif;color:#111827;">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;">Your refund has been processed</h2>
+        <p style="color:#6b7280;margin-bottom:24px;">Hi ${order.buyerName},</p>
+
+        <p style="color:#374151;margin-bottom:24px;">
+          ${isFullRefund
+            ? `Your order for <strong>${order.event.title}</strong> has been fully refunded.`
+            : `A partial refund has been issued for your order for <strong>${order.event.title}</strong>.`
+          }
+        </p>
+
+        <div style="background:#f9fafb;padding:16px;border-radius:8px;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
+            <tr><td style="padding:4px 0;color:#6b7280;">Event</td><td style="padding:4px 0;">${order.event.title}</td></tr>
+            <tr><td style="padding:4px 0;color:#6b7280;">Refund amount</td><td style="padding:4px 0;font-weight:700;color:#dc2626;">$${refundAmount.toFixed(2)} CAD</td></tr>
+            <tr><td style="padding:4px 0;color:#6b7280;">Order total</td><td style="padding:4px 0;">$${Number(order.totalAmount).toFixed(2)} CAD</td></tr>
+          </table>
+        </div>
+
+        <p style="color:#6b7280;font-size:14px;">
+          Please allow <strong>5–10 business days</strong> for the refund to appear on your statement, depending on your card issuer.
+        </p>
+
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#9ca3af;font-size:12px;">Order ID: ${order.id}</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendPurchaseNotification(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },

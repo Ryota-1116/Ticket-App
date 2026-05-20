@@ -5,8 +5,8 @@ import { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/auth";
 import { requireEventAccess } from "@/lib/event-access";
 import { stripe } from "@/lib/stripe";
+import { sendRefundEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 export type RefundState = { error?: string; success?: boolean };
@@ -75,6 +75,8 @@ export async function createRefund(
       },
     }),
   ]);
+
+  sendRefundEmail(orderId, refundAmount.toNumber()).catch(console.error);
 
   revalidatePath(`/host/events/${order.eventId}/refunds`);
   return { success: true };
