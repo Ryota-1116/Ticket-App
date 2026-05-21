@@ -80,8 +80,8 @@ model TicketType {
   description  String?         @db.Text
   // 金額はカナダドル（例: 10.50）
   price        Decimal         @db.Decimal(10, 2)
-  // 販売枚数上限
-  quantity     Int
+  // 販売枚数上限（null = 無制限）
+  quantity     Int?
   salesStartAt DateTime?       @map("sales_start_at")
   salesEndAt   DateTime?       @map("sales_end_at")
   createdAt    DateTime        @default(now()) @map("created_at")

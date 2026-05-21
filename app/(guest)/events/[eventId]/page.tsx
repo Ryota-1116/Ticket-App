@@ -29,7 +29,7 @@ export default async function EventPage({
         },
         _sum: { quantity: true },
       });
-      const remaining = tt.quantity - (sold._sum.quantity ?? 0);
+      const remaining = tt.quantity !== null ? tt.quantity - (sold._sum.quantity ?? 0) : null;
       return {
         id: tt.id,
         name: tt.name,

@@ -17,7 +17,11 @@ const TicketTypeSchema = z.object({
     .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) >= 0, "有効な価格を入力してください"),
   quantity: z
     .string()
-    .refine((v) => !isNaN(parseInt(v)) && parseInt(v) > 0, "1以上の枚数を入力してください"),
+    .refine(
+      (v) => v === "" || (!isNaN(parseInt(v)) && parseInt(v) >= 1),
+      "1以上の枚数を入力してください"
+    )
+    .optional(),
   salesStartAt: z.string().optional(),
   salesEndAt: z.string().optional(),
 });
@@ -43,7 +47,7 @@ export async function createTicketType(
       name,
       description: description || null,
       price: new Prisma.Decimal(parseFloat(price)),
-      quantity: parseInt(quantity),
+      quantity: quantity ? parseInt(quantity) : null,
       salesStartAt: salesStartAt ? new Date(salesStartAt) : null,
       salesEndAt: salesEndAt ? new Date(salesEndAt) : null,
     },
@@ -75,7 +79,7 @@ export async function updateTicketType(
       name,
       description: description || null,
       price: new Prisma.Decimal(parseFloat(price)),
-      quantity: parseInt(quantity),
+      quantity: quantity ? parseInt(quantity) : null,
       salesStartAt: salesStartAt ? new Date(salesStartAt) : null,
       salesEndAt: salesEndAt ? new Date(salesEndAt) : null,
     },

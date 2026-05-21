@@ -9,8 +9,8 @@ type TicketType = {
   name: string;
   description: string | null;
   price: string;
-  quantity: number;
-  remaining: number;
+  quantity: number | null;
+  remaining: number | null;
   salesStartAt: string | null;
   salesEndAt: string | null;
 };
@@ -82,7 +82,7 @@ export function PurchaseForm({
         {ticketTypes.map((tt) => {
           const salesStarted = !tt.salesStartAt || new Date(tt.salesStartAt) <= now;
           const salesEnded = tt.salesEndAt && new Date(tt.salesEndAt) < now;
-          const isSoldOut = tt.remaining === 0;
+          const isSoldOut = tt.remaining !== null && tt.remaining === 0;
           const disabled = !salesStarted || !!salesEnded || isSoldOut;
           const qty = quantities[tt.id] ?? 0;
 
@@ -149,10 +149,12 @@ export function PurchaseForm({
                       onClick={() =>
                         setQuantities((q) => ({
                           ...q,
-                          [tt.id]: Math.min(tt.remaining, (q[tt.id] ?? 0) + 1),
+                          [tt.id]: tt.remaining !== null
+                            ? Math.min(tt.remaining, (q[tt.id] ?? 0) + 1)
+                            : (q[tt.id] ?? 0) + 1,
                         }))
                       }
-                      disabled={qty >= tt.remaining}
+                      disabled={tt.remaining !== null && qty >= tt.remaining}
                       className="size-8 rounded-full bg-gray-900 text-white flex items-center justify-center hover:bg-gray-700 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-base leading-none"
                     >
                       +

@@ -27,7 +27,7 @@ export function TicketTypeForm({ eventId }: { eventId: string }) {
 
       <div className="grid grid-cols-2 gap-3">
         <Input label="価格 (CAD)" name="price" type="number" min="0" step="0.01" required placeholder="0.00" />
-        <Input label="販売枚数" name="quantity" type="number" min="1" required placeholder="100" />
+        <Input label="販売枚数（任意）" name="quantity" type="number" min="1" placeholder="空欄で無制限" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

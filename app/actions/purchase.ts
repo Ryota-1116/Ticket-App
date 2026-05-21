@@ -48,9 +48,11 @@ export async function createCheckoutSession(
       },
       _sum: { quantity: true },
     });
-    const remaining = tt.quantity - (sold._sum.quantity ?? 0);
-    if (qty > remaining)
-      return { error: `"${tt.name}" is sold out or has insufficient stock` };
+    if (tt.quantity !== null) {
+      const remaining = tt.quantity - (sold._sum.quantity ?? 0);
+      if (qty > remaining)
+        return { error: `"${tt.name}" is sold out or has insufficient stock` };
+    }
   }
 
   let subtotal = new Prisma.Decimal(0);

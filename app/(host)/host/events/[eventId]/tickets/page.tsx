@@ -46,7 +46,7 @@ export default async function TicketsPage({
         <div className="flex flex-col gap-3">
           {event.ticketTypes.map((tt) => {
             const sold = tt.orderItems.reduce((s, i) => s + i.quantity, 0);
-            const remaining = tt.quantity - sold;
+            const remaining = tt.quantity !== null ? tt.quantity - sold : null;
             const deleteAction = async () => {
               "use server";
               await deleteTicketType(eventId, tt.id);

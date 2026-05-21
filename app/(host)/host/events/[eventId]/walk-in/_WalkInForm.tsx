@@ -9,7 +9,7 @@ type TicketType = {
   id: string;
   name: string;
   price: string;
-  remaining: number;
+  remaining: number | null;
 };
 
 export function WalkInForm({
@@ -75,7 +75,8 @@ export function WalkInForm({
         <div className="flex flex-col gap-2">
           {ticketTypes.map((tt) => {
             const qty = quantities[tt.id] ?? 0;
-            const soldOut = tt.remaining === 0;
+            const soldOut = tt.remaining !== null && tt.remaining === 0;
+            const max = tt.remaining ?? 99;
             return (
               <div
                 key={tt.id}
@@ -87,15 +88,17 @@ export function WalkInForm({
                     ${tt.price}
                     {soldOut ? (
                       <span className="ml-2 text-red-500">在庫なし</span>
-                    ) : (
+                    ) : tt.remaining !== null ? (
                       <span className="ml-2 text-gray-400">残り {tt.remaining} 枚</span>
+                    ) : (
+                      <span className="ml-2 text-gray-400">上限なし</span>
                     )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => adjust(tt.id, -1, tt.remaining)}
+                    onClick={() => adjust(tt.id, -1, max)}
                     disabled={qty === 0}
                     className="w-8 h-8 rounded-full border border-gray-300 text-gray-600 text-lg leading-none flex items-center justify-center hover:bg-gray-100 disabled:opacity-30"
                   >
@@ -104,8 +107,8 @@ export function WalkInForm({
                   <span className="w-6 text-center text-sm font-semibold text-gray-900">{qty}</span>
                   <button
                     type="button"
-                    onClick={() => adjust(tt.id, 1, tt.remaining)}
-                    disabled={soldOut || qty >= tt.remaining}
+                    onClick={() => adjust(tt.id, 1, max)}
+                    disabled={soldOut || qty >= max}
                     className="w-8 h-8 rounded-full border border-gray-300 text-gray-600 text-lg leading-none flex items-center justify-center hover:bg-gray-100 disabled:opacity-30"
                   >
                     ＋

@@ -12,8 +12,8 @@ type TicketType = {
   name: string;
   description: string | null;
   price: string;
-  quantity: number;
-  remaining: number;
+  quantity: number | null;
+  remaining: number | null;
   sold: number;
   salesStartAt: string | null;
   salesEndAt: string | null;
@@ -48,7 +48,10 @@ export function TicketTypeCard({
           )}
           <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-600">
             <span>${ticketType.price}</span>
-            <span>残り {ticketType.remaining} / {ticketType.quantity} 枚</span>
+            {ticketType.quantity !== null
+              ? <span>残り {ticketType.remaining} / {ticketType.quantity} 枚</span>
+              : <span>{ticketType.sold} 枚販売済み（上限なし）</span>
+            }
             {ticketType.salesStartAt && (
               <span>
                 販売期間: {new Date(ticketType.salesStartAt).toLocaleDateString("ja-JP")} 〜{" "}
@@ -80,7 +83,7 @@ export function TicketTypeCard({
           <Textarea label="説明（任意）" name="description" rows={2} defaultValue={ticketType.description ?? ""} />
           <div className="grid grid-cols-2 gap-3">
             <Input label="価格 (CAD)" name="price" type="number" min="0" step="0.01" required defaultValue={ticketType.price} />
-            <Input label="販売枚数" name="quantity" type="number" min={ticketType.sold} required defaultValue={String(ticketType.quantity)} />
+            <Input label="販売枚数（任意）" name="quantity" type="number" min={ticketType.sold} placeholder="空欄で無制限" defaultValue={ticketType.quantity != null ? String(ticketType.quantity) : ""} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="販売開始（任意）" name="salesStartAt" type="datetime-local" defaultValue={ticketType.salesStartAt ?? ""} />

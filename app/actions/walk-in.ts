@@ -47,15 +47,17 @@ export async function createWalkInOrder(
   for (const [typeId, qty] of selectedTypes) {
     const tt = event.ticketTypes.find((t) => t.id === typeId);
     if (!tt) return { error: "無効なチケット種別です" };
-    const sold = await prisma.orderItem.aggregate({
-      where: {
-        ticketTypeId: typeId,
-        order: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] as OrderStatus[] } },
-      },
-      _sum: { quantity: true },
-    });
-    const remaining = tt.quantity - (sold._sum.quantity ?? 0);
-    if (qty > remaining) return { error: `「${tt.name}」の在庫が不足しています（残り ${remaining} 枚）` };
+    if (tt.quantity !== null) {
+      const sold = await prisma.orderItem.aggregate({
+        where: {
+          ticketTypeId: typeId,
+          order: { status: { in: ["PAID", "PARTIALLY_REFUNDED"] as OrderStatus[] } },
+        },
+        _sum: { quantity: true },
+      });
+      const remaining = tt.quantity - (sold._sum.quantity ?? 0);
+      if (qty > remaining) return { error: `「${tt.name}」の在庫が不足しています（残り ${remaining} 枚）` };
+    }
   }
 
   let subtotal = new Prisma.Decimal(0);
