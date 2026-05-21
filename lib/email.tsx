@@ -1,10 +1,18 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
 
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY!);
+function getTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
 }
+
+const FROM = `House Party <${process.env.GMAIL_USER}>`;
 
 export async function sendRefundEmail(orderId: string, refundAmount: number) {
   const order = await prisma.order.findUnique({
@@ -15,8 +23,8 @@ export async function sendRefundEmail(orderId: string, refundAmount: number) {
 
   const isFullRefund = refundAmount >= Number(order.totalAmount);
 
-  await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+  await getTransporter().sendMail({
+    from: FROM,
     to: order.buyerEmail,
     subject: `Refund Confirmation — ${order.event.title}`,
     html: `
@@ -76,39 +84,32 @@ export async function sendPurchaseNotification(orderId: string) {
     ...collaborators.map((c) => c.user.email),
   ].filter((e): e is string => !!e);
 
-  console.log("[notification] adminEmails:", JSON.stringify(adminEmails));
   if (adminEmails.length === 0) return;
 
   const itemLines = order.orderItems
     .map((i) => `${i.ticketType.name} × ${i.quantity}`)
     .join(", ");
 
-  const html = `
-    <div style="max-width:480px;margin:0 auto;font-family:sans-serif;color:#111827;">
-      <h2 style="font-size:18px;font-weight:700;margin-bottom:16px;">チケット購入がありました</h2>
-      <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
-        <tr><td style="padding:6px 0;color:#6b7280;">イベント</td><td style="padding:6px 0;font-weight:600;">${order.event.title}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">購入者</td><td style="padding:6px 0;">${order.buyerName}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">メール</td><td style="padding:6px 0;">${order.buyerEmail}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">チケット</td><td style="padding:6px 0;">${itemLines}</td></tr>
-        <tr style="border-top:1px solid #e5e7eb;">
-          <td style="padding:10px 0 4px;font-weight:700;">合計</td>
-          <td style="padding:10px 0 4px;font-weight:700;">$${Number(order.totalAmount).toFixed(2)} CAD</td>
-        </tr>
-      </table>
-    </div>
-  `;
-
-  await Promise.all(
-    adminEmails.map((email) =>
-      getResend().emails.send({
-        from: process.env.RESEND_FROM_EMAIL!,
-        to: email,
-        subject: `New ticket purchase — ${order.event.title}`,
-        html,
-      })
-    )
-  );
+  await getTransporter().sendMail({
+    from: FROM,
+    to: adminEmails.join(", "),
+    subject: `New ticket purchase — ${order.event.title}`,
+    html: `
+      <div style="max-width:480px;margin:0 auto;font-family:sans-serif;color:#111827;">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:16px;">チケット購入がありました</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;">
+          <tr><td style="padding:6px 0;color:#6b7280;">イベント</td><td style="padding:6px 0;font-weight:600;">${order.event.title}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">購入者</td><td style="padding:6px 0;">${order.buyerName}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">メール</td><td style="padding:6px 0;">${order.buyerEmail}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">チケット</td><td style="padding:6px 0;">${itemLines}</td></tr>
+          <tr style="border-top:1px solid #e5e7eb;">
+            <td style="padding:10px 0 4px;font-weight:700;">合計</td>
+            <td style="padding:10px 0 4px;font-weight:700;">$${Number(order.totalAmount).toFixed(2)} CAD</td>
+          </tr>
+        </table>
+      </div>
+    `,
+  });
 }
 
 export async function sendTicketEmail(orderId: string) {
@@ -158,8 +159,8 @@ export async function sendTicketEmail(orderId: string) {
     minute: "2-digit",
   });
 
-  await getResend().emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
+  await getTransporter().sendMail({
+    from: FROM,
     to: order.buyerEmail,
     subject: `Your tickets for ${order.event.title}`,
     html: `
