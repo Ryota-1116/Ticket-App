@@ -47,7 +47,9 @@ export async function POST(request: Request) {
       );
       const charge = intent.latest_charge as Stripe.Charge | null;
       const bt = charge?.balance_transaction as Stripe.BalanceTransaction | null;
-      stripeFee = (bt?.fee ?? 0) / 100;
+      stripeFee = bt
+        ? bt.fee / 100
+        : Math.round((Number(order.totalAmount) * 0.029 + 0.30) * 100) / 100;
       stripeChargeId = charge?.id ?? null;
     }
 
