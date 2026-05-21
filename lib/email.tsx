@@ -76,6 +76,7 @@ export async function sendPurchaseNotification(orderId: string) {
     ...collaborators.map((c) => c.user.email),
   ].filter((e): e is string => !!e);
 
+  console.log("[notification] adminEmails:", JSON.stringify(adminEmails));
   if (adminEmails.length === 0) return;
 
   const itemLines = order.orderItems
