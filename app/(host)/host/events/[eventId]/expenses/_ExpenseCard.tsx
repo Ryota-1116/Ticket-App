@@ -7,11 +7,14 @@ import { Input } from "@/app/_components/ui/Input";
 import { SubmitButton } from "@/app/_components/ui/Button";
 import { DeleteButton } from "@/app/_components/ui/DeleteButton";
 
+const MEMBERS = ["そうすけ", "しんたろう", "りょうた"];
+
 type Expense = {
   id: string;
   description: string;
   amount: string;
   occurredAt: string;
+  paidBy: string | null;
 };
 
 export function ExpenseCard({
@@ -37,7 +40,14 @@ export function ExpenseCard({
     <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{expense.description}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-gray-900 truncate">{expense.description}</p>
+            {expense.paidBy && (
+              <span className="shrink-0 text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">
+                {expense.paidBy}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">{expense.occurredAt}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -64,6 +74,19 @@ export function ExpenseCard({
           <div className="grid grid-cols-2 gap-3">
             <Input label="金額 (CAD)" name="amount" type="number" min="0.01" step="0.01" required defaultValue={expense.amount} />
             <Input label="発生日" name="occurredAt" type="date" required defaultValue={expense.occurredAt} />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">支払者（任意）</label>
+            <select
+              name="paidBy"
+              defaultValue={expense.paidBy ?? ""}
+              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-700 bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="">未設定</option>
+              {MEMBERS.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
           </div>
           <SubmitButton size="sm" className="w-full">保存する</SubmitButton>
         </form>

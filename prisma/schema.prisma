@@ -204,6 +204,7 @@ model Expense {
   id          String   @id @default(cuid())
   eventId     String   @map("event_id")
   description String
+  paidBy      String?  @map("paid_by")
   // 金額（ドル）
   amount      Decimal  @db.Decimal(10, 2)
   occurredAt  DateTime @map("occurred_at")

@@ -15,6 +15,7 @@ const ExpenseSchema = z.object({
     .string()
     .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, "有効な金額を入力してください"),
   occurredAt: z.string().min(1, "日付を入力してください"),
+  paidBy: z.string().optional(),
 });
 
 export async function createExpense(
@@ -29,12 +30,13 @@ export async function createExpense(
   if (!parsed.success)
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
 
-  const { description, amount, occurredAt } = parsed.data;
+  const { description, amount, occurredAt, paidBy } = parsed.data;
 
   await prisma.expense.create({
     data: {
       eventId,
       description,
+      paidBy: paidBy || null,
       amount: new Prisma.Decimal(parseFloat(amount)),
       occurredAt: new Date(occurredAt),
     },
@@ -57,12 +59,13 @@ export async function updateExpense(
   if (!parsed.success)
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
 
-  const { description, amount, occurredAt } = parsed.data;
+  const { description, amount, occurredAt, paidBy } = parsed.data;
 
   await prisma.expense.update({
     where: { id: expenseId },
     data: {
       description,
+      paidBy: paidBy || null,
       amount: new Prisma.Decimal(parseFloat(amount)),
       occurredAt: new Date(occurredAt),
     },
