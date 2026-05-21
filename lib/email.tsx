@@ -51,27 +51,25 @@ export async function sendRefundEmail(orderId: string, refundAmount: number) {
 }
 
 export async function sendPurchaseNotification(orderId: string) {
-  const [order, collaborators] = await Promise.all([
-    prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        event: { select: { id: true, title: true, hostId: true } },
-        orderItems: { include: { ticketType: { select: { name: true } } } },
-      },
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      event: { select: { id: true, title: true, hostId: true } },
+      orderItems: { include: { ticketType: { select: { name: true } } } },
+    },
+  });
+  if (!order) return;
+
+  const [host, collaborators] = await Promise.all([
+    prisma.profile.findUnique({
+      where: { id: order.event.hostId },
+      select: { email: true },
     }),
     prisma.eventCollaborator.findMany({
-      where: {
-        event: { orders: { some: { id: orderId } } },
-      },
+      where: { eventId: order.event.id },
       include: { user: { select: { email: true } } },
     }),
   ]);
-  if (!order) return;
-
-  const host = await prisma.profile.findUnique({
-    where: { id: order.event.hostId },
-    select: { email: true },
-  });
 
   const adminEmails = [
     host?.email,
