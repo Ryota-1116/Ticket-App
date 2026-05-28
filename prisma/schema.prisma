@@ -137,7 +137,7 @@ model Order {
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
 
-  event      Event       @relation(fields: [eventId], references: [id])
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
   promoCode  PromoCode?  @relation(fields: [promoCodeId], references: [id])
   orderItems OrderItem[]
   refunds    Refund[]
