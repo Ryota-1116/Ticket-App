@@ -2,6 +2,7 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { sendTicketEmail, sendPurchaseNotification } from "@/lib/email";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import type Stripe from "stripe";
 
@@ -85,6 +86,41 @@ export async function POST(request: Request) {
     ]);
     if (ticketResult.status === "rejected") console.error("[email] sendTicketEmail failed:", ticketResult.reason);
     if (notifResult.status === "rejected") console.error("[email] sendPurchaseNotification failed:", notifResult.reason);
+  }
+
+  // checkout.session.completed 時に balance_transaction が未確定だった場合、
+  // charge.updated で確定後に正確な手数料へ上書きする
+  if (event.type === "charge.updated") {
+    const charge = event.data.object as Stripe.Charge;
+
+    if (!charge.balance_transaction || !charge.payment_intent) {
+      return new Response(null, { status: 200 });
+    }
+
+    const paymentIntentId =
+      typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : charge.payment_intent.id;
+
+    const order = await prisma.order.findFirst({
+      where: { stripePaymentIntentId: paymentIntentId, status: "PAID" },
+    });
+    if (!order) return new Response(null, { status: 200 });
+
+    const btId =
+      typeof charge.balance_transaction === "string"
+        ? charge.balance_transaction
+        : charge.balance_transaction.id;
+
+    const bt = await stripe.balanceTransactions.retrieve(btId);
+    const actualFee = bt.fee / 100;
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { stripeFee: actualFee, stripeChargeId: charge.id },
+    });
+
+    revalidatePath(`/host/events/${order.eventId}`);
   }
 
   if (event.type === "checkout.session.expired") {
