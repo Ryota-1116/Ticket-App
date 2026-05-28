@@ -27,6 +27,8 @@ export async function POST(request: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    // payment_status が "paid" 以外（unpaid / no_payment_required）は処理しない
+    if (session.payment_status !== "paid") return new Response(null, { status: 200 });
     const orderId = session.metadata?.orderId;
     if (!orderId) return new Response(null, { status: 200 });
 

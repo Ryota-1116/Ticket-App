@@ -34,15 +34,30 @@ export default async function EventOverviewPage({
 
   const isOwner = event.hostId === user.id; // 共有メンバー管理のみオーナー限定
 
-  // 集計
-  const totalSold = event.orders
-    .filter((o) => o.status === "PAID" || o.status === "PARTIALLY_REFUNDED")
-    .reduce((s, o) => s + o.orderItems.reduce((ss, i) => ss + i.quantity, 0), 0);
-  const grossRevenue = event.orders.reduce((s, o) => s + Number(o.totalAmount), 0);
+  // 集計 — REFUNDED（全額返金済み）は売上・返金どちらからも除外。
+  // 全額返金の net は $0 のため除外しても純利益は変わらない。
+  // ただし Stripe 手数料は返金されない可能性があるため全注文から合算する。
+  const activeOrders = event.orders.filter(
+    (o) => o.status === "PAID" || o.status === "PARTIALLY_REFUNDED"
+  );
+  const totalSold = activeOrders.reduce(
+    (s, o) => s + o.orderItems.reduce((ss, i) => ss + i.quantity, 0), 0
+  );
+  const grossRevenue = activeOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
   const totalFees = event.orders.reduce((s, o) => s + Number(o.stripeFee), 0);
-  const totalRefunds = event.orders.reduce((s, o) => s + Number(o.refundedAmount), 0);
+  const totalRefunds = activeOrders.reduce((s, o) => s + Number(o.refundedAmount), 0);
   const totalExpenses = event.expenses.reduce((s, e) => s + Number(e.amount), 0);
   const netProfit = grossRevenue - totalFees - totalRefunds - totalExpenses;
+
+  const onlineRevenue = activeOrders
+    .filter((o) => o.stripePaymentIntentId !== null)
+    .reduce((s, o) => s + Number(o.totalAmount), 0);
+  const cashRevenue = activeOrders
+    .filter((o) => o.stripePaymentIntentId === null && o.paymentMethod !== "E_TRANSFER")
+    .reduce((s, o) => s + Number(o.totalAmount), 0);
+  const etransferRevenue = activeOrders
+    .filter((o) => o.paymentMethod === "E_TRANSFER")
+    .reduce((s, o) => s + Number(o.totalAmount), 0);
 
   const startDate = event.startAt.toLocaleDateString("ja-JP", {
     year: "numeric",
@@ -91,6 +106,23 @@ export default async function EventOverviewPage({
             </p>
           </div>
         ))}
+      </div>
+
+      {/* 売上内訳（支払方法別） */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">売上内訳</p>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "チケット（Stripe）", value: onlineRevenue },
+            { label: "現金", value: cashRevenue },
+            { label: "e-transfer", value: etransferRevenue },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center">
+              <p className="text-xs text-gray-500 mb-1">{label}</p>
+              <p className="text-base font-bold text-gray-900">${value.toFixed(2)}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 公開URL */}
