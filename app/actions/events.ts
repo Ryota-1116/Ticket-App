@@ -118,6 +118,12 @@ export async function unpublishEvent(eventId: string) {
 export async function deleteEvent(eventId: string) {
   const user = await requireAuth();
   await requireEventAccess(eventId, user.id);
-  await prisma.event.delete({ where: { id: eventId } });
+
+  await prisma.$transaction(async (tx) => {
+    // OrderItem が TicketType を参照しているため先に削除（Ticket も連鎖削除される）
+    await tx.orderItem.deleteMany({ where: { order: { eventId } } });
+    await tx.event.delete({ where: { id: eventId } });
+  });
+
   revalidatePath("/host/events");
 }
