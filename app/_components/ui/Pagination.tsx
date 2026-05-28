@@ -4,16 +4,20 @@ type Props = {
   page: number;
   totalPages: number;
   basePath: string;
+  extraQuery?: string;
 };
 
-export function Pagination({ page, totalPages, basePath }: Props) {
+export function Pagination({ page, totalPages, basePath, extraQuery }: Props) {
   if (totalPages <= 1) return null;
+
+  const q = (p: number) =>
+    `${basePath}?${extraQuery ? `${extraQuery}&` : ""}page=${p}`;
 
   return (
     <div className="flex items-center justify-center gap-3 pt-2">
       {page > 1 ? (
         <Link
-          href={`${basePath}?page=${page - 1}`}
+          href={q(page - 1)}
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
         >
           前へ
@@ -30,7 +34,7 @@ export function Pagination({ page, totalPages, basePath }: Props) {
 
       {page < totalPages ? (
         <Link
-          href={`${basePath}?page=${page + 1}`}
+          href={q(page + 1)}
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
         >
           次へ

@@ -41,9 +41,9 @@ export default async function WalkInPage({
   return (
     <div className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-5">
       <div>
-        <h2 className="text-lg font-bold text-gray-900">当日受付（現金）</h2>
+        <h2 className="text-lg font-bold text-gray-900">当日受付</h2>
         <p className="text-sm text-gray-500 mt-1">
-          当日現金払いの参加者をシステムに登録します。
+          当日受付の参加者をシステムに登録します。
         </p>
       </div>
 

@@ -131,6 +131,8 @@ model Order {
   stripeFee             Decimal     @default(0) @db.Decimal(10, 2) @map("stripe_fee")
   stripePaymentIntentId String?     @unique @map("stripe_payment_intent_id")
   stripeChargeId        String?     @map("stripe_charge_id")
+  // null = Stripe online, "CASH" = 現金, "E_TRANSFER" = e-transfer
+  paymentMethod         String?     @map("payment_method")
   status                OrderStatus @default(PENDING)
   // 累積返金額（ドル、部分返金に対応）
   refundedAmount        Decimal     @default(0) @db.Decimal(10, 2) @map("refunded_amount")

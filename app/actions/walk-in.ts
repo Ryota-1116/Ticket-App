@@ -13,6 +13,7 @@ export type WalkInState = { error?: string; success?: boolean; buyerName?: strin
 const Schema = z.object({
   buyerName: z.string().min(1, "名前を入力してください"),
   buyerEmail: z.string().email("メールアドレスの形式が正しくありません").or(z.literal("")).optional(),
+  paymentMethod: z.enum(["CASH", "E_TRANSFER"]),
 });
 
 export async function createWalkInOrder(
@@ -35,11 +36,12 @@ export async function createWalkInOrder(
   const parsed = Schema.safeParse({
     buyerName: formData.get("buyerName"),
     buyerEmail: formData.get("buyerEmail") || "",
+    paymentMethod: formData.get("paymentMethod"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
-  const { buyerName, buyerEmail } = parsed.data;
-  const email = buyerEmail || `cash-${Date.now()}@walkin.local`;
+  const { buyerName, buyerEmail, paymentMethod } = parsed.data;
+  const email = buyerEmail || `walkin-${Date.now()}@walkin.local`;
 
   const selectedTypes = Object.entries(quantities).filter(([, qty]) => qty > 0);
   if (selectedTypes.length === 0) return { error: "チケットを1枚以上選択してください" };
@@ -79,6 +81,7 @@ export async function createWalkInOrder(
         discountAmount: 0,
         totalAmount: subtotal,
         stripeFee: 0,
+        paymentMethod,
         status: "PAID",
       },
     });
@@ -110,4 +113,19 @@ export async function createWalkInOrder(
   revalidatePath(`/host/events/${eventId}`);
 
   return { success: true, buyerName };
+}
+
+export async function deleteWalkInOrder(eventId: string, orderId: string): Promise<void> {
+  const user = await requireAuth();
+  await requireEventAccess(eventId, user.id);
+
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, eventId, stripePaymentIntentId: null },
+  });
+  if (!order) throw new Error("手動登録の注文が見つかりません");
+
+  await prisma.order.delete({ where: { id: orderId } });
+
+  revalidatePath(`/host/events/${eventId}/attendees`);
+  revalidatePath(`/host/events/${eventId}`);
 }

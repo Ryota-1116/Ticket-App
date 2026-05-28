@@ -22,6 +22,7 @@ export function WalkInForm({
   const [quantities, setQuantities] = useState<Record<string, number>>(
     Object.fromEntries(ticketTypes.map((tt) => [tt.id, 0]))
   );
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "E_TRANSFER">("CASH");
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const boundAction = createWalkInOrder.bind(null, eventId, quantities);
@@ -68,6 +69,18 @@ export function WalkInForm({
           type="email"
           placeholder="省略可"
         />
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">支払方法</label>
+          <select
+            name="paymentMethod"
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value as "CASH" | "E_TRANSFER")}
+            className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-700 bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
+            <option value="CASH">現金</option>
+            <option value="E_TRANSFER">e-transfer</option>
+          </select>
+        </div>
       </div>
 
       <div>
@@ -122,7 +135,9 @@ export function WalkInForm({
 
       {totalAmount > 0 && (
         <div className="flex items-center justify-between px-1 text-sm">
-          <span className="text-gray-600">合計（現金受取額）</span>
+          <span className="text-gray-600">
+            合計（{paymentMethod === "CASH" ? "現金" : "e-transfer"}受取額）
+          </span>
           <span className="text-lg font-bold text-gray-900">${totalAmount.toFixed(2)}</span>
         </div>
       )}
